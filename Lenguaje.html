@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudio Integral - Aptitud y Comunicación</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Animaciones */
+        .accordion-content {
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .accordion-content.open {
+            max-height: 2000px;
+            opacity: 1;
+        }
+
+        /* Estilos del Quiz */
+        .option-card {
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .option-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        /* Estados visuales */
+        .option-card.correct { border-color: #22c55e; background-color: #dcfce7; }
+        .option-card.wrong { border-color: #ef4444; background-color: #fee2e2; animation: shake 0.4s; }
+        .option-card.disabled { pointer-events: none; opacity: 0.7; }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Tarjetas de teoría */
+        .theory-card {
+            border-left: 4px solid #3b82f6;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .theory-title {
+            color: #1e40af;
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .etymology-tag {
+            background-color: #fef3c7;
+            color: #92400e;
+            padding: 0.1rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-left: auto;
+        }
+        .highlight {
+            background-color: #e0e7ff;
+            padding: 0 4px;
+            border-radius: 4px;
+            color: #3730a3;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm h-16 flex items-center justify-between px-4 z-20 relative">
+        <div class="flex items-center gap-4">
+            <button id="menu-btn" class="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition md:hidden">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+            <h1 class="text-lg font-bold text-gray-800">
+                <span class="text-blue-600">Academia</span>Virtual
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <div id="progress-container" class="hidden md:flex flex-col items-end mr-4">
+                <span class="text-xs text-gray-500 font-medium">Temas Dominados (30/30)</span>
+                <div class="w-32 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                    <div id="global-progress-bar" class="h-full bg-green-500 rounded-full w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="bg-white w-80 border-r border-gray-200 absolute md:relative h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-10 flex flex-col shadow-xl md:shadow-none">
+            <div class="p-5 border-b border-gray-100 bg-gray-50">
+                <h2 class="font-bold text-gray-800 text-lg">Temario Oficial</h2>
+                <p class="text-xs text-gray-500 mt-1">Completa cada tema con puntaje perfecto para avanzar.</p>
+            </div>
+            <nav id="syllabus-nav" class="flex-1 overflow-y-auto p-3 scrollbar-hide space-y-4">
+                <!-- Contenido generado por JS -->
+            </nav>
+        </aside>
+
+        <!-- Overlay para móvil -->
+        <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-0 hidden md:hidden glass"></div>
+
+        <!-- Content Area -->
+        <main id="main-content" class="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth bg-gray-50/50">
+            
+            <!-- Vista de Bienvenida -->
+            <div id="welcome-view" class="max-w-4xl mx-auto text-center mt-10">
+                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg text-white">
+                    <i class="fas fa-graduation-cap text-4xl"></i>
+                </div>
+                <h2 class="text-4xl font-bold text-gray-900 mb-4 tracking-tight">Bienvenido a tu Espacio de Estudio</h2>
+                <p class="text-gray-600 mb-10 text-lg max-w-2xl mx-auto leading-relaxed">
+                    Sistema de aprendizaje de alto rendimiento. <br>
+                    <strong>Regla de oro:</strong> Solo avanzarás al siguiente tema si obtienes 30/30 en la evaluación.
+                </p>
+                
+                <button onclick="triggerTopic(1)" class="bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg text-lg animate-pulse">
+                    Comenzar con Tema 1: Homonimia
+                </button>
+            </div>
+
+            <!-- Vista de Contenido del Tema -->
+            <div id="topic-view" class="hidden max-w-5xl mx-auto pb-24">
+                <!-- Header del Tema -->
+                <div class="mb-8">
+                    <div class="flex items-center gap-2 text-sm text-blue-600 font-semibold mb-3 tracking-wide uppercase">
+                        <span id="topic-module-badge" class="bg-blue-100 px-2 py-1 rounded">Módulo 1</span>
+                        <i class="fas fa-chevron-right text-xs"></i>
+                        <span id="topic-breadcrumb">Tema</span>
+                    </div>
+                    <h1 id="topic-title" class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 leading-tight">Título del Tema</h1>
+                    
+                    <!-- Contenedor de Teoría -->
+                    <div id="topic-theory" class="space-y-4">
+                        <!-- Teoría insertada aquí dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Sección de Ejemplos Globales -->
+                <div id="examples-section" class="mb-12">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="h-10 w-1 bg-yellow-400 rounded-full"></div>
+                        <h3 class="text-2xl font-bold text-gray-800">Banco de Ejemplos</h3>
+                    </div>
+                    <div id="topic-examples" class="grid grid-cols-1 md:grid-cols-2 gap-4 custom-scrollbar max-h-[400px] overflow-y-auto bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                        <!-- Ejemplos insertados aquí -->
+                    </div>
+                </div>
+
+                <!-- Sección de Quiz -->
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden relative" id="quiz-section">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-gray-100">
+                        <div id="quiz-progress-bar" class="h-full bg-blue-600 transition-all duration-300 w-0"></div>
+                    </div>
+
+                    <div class="bg-gray-900 p-6 md:p-8 text-white">
+                        <div class="flex justify-between items-center mb-1">
+                            <div>
+                                <h3 class="font-bold text-2xl flex items-center gap-3">
+                                    <i class="fas fa-pencil-alt text-blue-400"></i> Evaluación
+                                </h3>
+                                <p class="text-gray-400 text-xs mt-1">Acierta todas para avanzar.</p>
+                            </div>
+                            <span id="quiz-counter" class="text-lg font-bold font-mono">1 / 30</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 md:p-10 relative min-h-[300px]">
+                        <!-- Contenedor Activo del Quiz -->
+                        <div id="quiz-container">
+                            <p id="question-text" class="text-xl md:text-2xl font-medium text-gray-800 mb-8 leading-snug">¿Pregunta del quiz?</p>
+                            
+                            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <!-- Opciones generadas aquí -->
+                            </div>
+                            
+                            <!-- Feedback flotante (sin ocupar espacio) -->
+                            <div id="feedback-toast" class="hidden absolute top-4 right-4 bg-white shadow-lg rounded-lg px-4 py-2 border font-bold text-sm animate-fade-in-up z-10">
+                                Feedback
+                            </div>
+                        </div>
+
+                        <!-- Pantalla Final del Quiz -->
+                        <div id="quiz-completed" class="hidden text-center py-4">
+                            <div id="result-icon" class="w-24 h-24 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl shadow-inner">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            
+                            <h3 class="text-3xl font-bold text-gray-800 mb-2">Evaluación Finalizada</h3>
+                            
+                            <div class="bg-gray-50 rounded-2xl p-6 max-w-sm mx-auto mb-8 border border-gray-200 mt-6">
+                                <div class="text-center">
+                                    <span class="text-gray-500 text-sm font-medium uppercase tracking-widest">Tu Puntuación</span>
+                                    <div id="final-score" class="text-5xl font-extrabold text-blue-600 mt-2">0/30</div>
+                                </div>
+                                <div id="progress-feedback" class="mt-4 text-sm font-semibold text-center py-2 rounded-lg"></div>
+                            </div>
+
+                            <div class="flex flex-col gap-3 justify-center max-w-xs mx-auto" id="result-actions">
+                                <!-- Botones inyectados por JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- ESTRUCTURA DEL TEMARIO ---
+        const SyllabusStructure = [
+            {
+                module: "Módulo 1: Aptitudinal",
+                topics: [
+                    { id: 1, title: "1. Homonimia", desc: "Homófonos, Homógrafos, Parónimos, Polisemia" },
+                    { id: 2, title: "2. Categoría gramatical", desc: "Palabra, variables, invariables, preposiciones" },
+                    { id: 3, title: "3. Sinónimos y antónimos", desc: "Criterios, categorías, polisemia" },
+                    { id: 4, title: "4. Analogías verbales", desc: "Relaciones, frecuencia, dirección" },
+                    { id: 5, title: "5. Término excluido", desc: "Criterios, acentuación (agudas, graves, diacrítica)" }
+                ]
+            },
+            {
+                module: "Módulo 2: Ortografía",
+                topics: [
+                    { id: 6, title: "6. Numerales", desc: "Cardinales, ordinales, romanos" },
+                    { id: 7, title: "7. Siglas y Abreviaturas", desc: "Listado general" },
+                    { id: 8, title: "8. Mayúsculas", desc: "Reglas de uso" },
+                    { id: 9, title: "9. Uso de las letras", desc: "B, V, C, S, Z, G, J" },
+                    { id: 10, title: "10. Metaplasmos y vicios", desc: "Prótesis, apócope, barbarismos" },
+                    { id: 11, title: "11. Puntuación", desc: "Punto, coma, dos puntos, paréntesis" }
+                ]
+            },
+            {
+                module: "Módulo 3: La Comunicación",
+                topics: [
+                    { id: 12, title: "12. La Comunicación", desc: "Lenguaje, tipos, medios, elementos" }
+                ]
+            }
+        ];
+
+        // --- DATOS MASIVOS ---
+        const DataBank = {
+            homonimia: {
+                homofonos: [
+                    ["ABLANDO", "ablandar", "HABLANDO", "hablar"], ["ARROLLO", "atropellar", "ARROYO", "río"],
+                    ["AS", "campeón", "HAS", "haber"], ["ASTA", "cuerno", "HASTA", "preposición"],
+                    ["BACA", "coche", "VACA", "animal"], ["BASO", "apoyar", "VASO", "recipiente"],
+                    ["BELLO", "hermoso", "VELLO", "pelo"], ["BOTAR", "arrojar", "VOTAR", "elegir"],
+                    ["CABE", "entrar", "CAVE", "hoyo"], ["CASA", "hogar", "CAZA", "atrapar"],
+                    ["CIERVO", "animal", "SIERVO", "esclavo"], ["COCER", "hervir", "COSER", "aguja"],
+                    ["ECHO", "lanzar", "HECHO", "suceso"], ["GRABA", "video", "GRAVA", "piedra"],
+                    ["HIERBA", "planta", "HIERVA", "calentar"], ["HOLA", "saludo", "OLA", "mar"],
+                    ["HORA", "tiempo", "ORA", "rezar"], ["MALLA", "tejido", "MAYA", "indígena"],
+                    ["RAYAR", "escribir", "RALLAR", "desmenuzar"], ["SABIA", "culta", "SAVIA", "planta"],
+                    ["TUBO", "pieza", "TUVO", "tener"], ["VAYA", "ir", "VALLA", "cerca"]
+                ],
+                homografos: [
+                    { w: "VINO", d1: "Bebida", d2: "Venir" }, { w: "LIMA", d1: "Fruta", d2: "Herramienta" },
+                    { w: "GATO", d1: "Animal", d2: "Herramienta" }, { w: "BANCO", d1: "Asiento", d2: "Dinero" },
+                    { w: "LISTA", d1: "Nombres", d2: "Inteligente" }, { w: "CURA", d1: "Sacerdote", d2: "Sanación" },
+                    { w: "COLA", d1: "Pegamento", d2: "Rabo" }, { w: "PILA", d1: "Batería", d2: "Montón" },
+                    { w: "TRAJE", d1: "Vestido", d2: "Traer" }, { w: "AMO", d1: "Dueño", d2: "Amar" }
+                ],
+                paronimos: [
+                    ["ACTITUD", "comportamiento", "APTITUD", "capacidad"], ["ADOPTAR", "acoger", "ADAPTAR", "acomodar"],
+                    ["AFECTO", "cariño", "EFECTO", "resultado"], ["ABSORBER", "líquido", "ABSOLVER", "perdonar"],
+                    ["CONTEXTO", "entorno", "CONTESTO", "responder"], ["ESPIAR", "observar", "EXPIAR", "pagar"],
+                    ["ESTIRPE", "linaje", "EXTIRPE", "arrancar"], ["EXCITAR", "provocar", "HESITAR", "dudar"],
+                    ["PREJUICIO", "juzgar antes", "PERJUICIO", "daño"], ["INFRINGIR", "violar ley", "INFLIGIR", "causar daño"],
+                    ["SALUBRE", "saludable", "SALOBRE", "salado"], ["YIERRO", "error", "HIERRO", "metal"]
+                ]
+            },
+            gramatica: {
+                sustantivos: ["Mesa", "Juan", "Libertad", "Jauría", "Agua", "Lápiz", "Ecuador"],
+                verbos: ["Correr", "Saltar", "Es", "Estaba", "Comiendo", "Vivirá", "Haber"],
+                adjetivos: ["Rojo", "Grande", "Feliz", "Amable", "Rápido", "Suave", "Inteligente"],
+                preposiciones: ["A", "Ante", "Bajo", "Cabe", "Con", "Contra", "De", "Desde", "En", "Entre", "Hacia", "Hasta", "Para", "Por", "Según", "Sin", "So", "Sobre", "Tras"],
+                adverbios: ["Ayer", "Hoy", "Mañana", "Aquí", "Allí", "Mucho", "Poco", "Bien", "Mal"]
+            },
+            sin_ant: [
+                { w: "EFÍMERO", s: "Pasajero", a: "Eterno" }, { w: "ALTRUISTA", s: "Solidario", a: "Egoísta" },
+                { w: "CANDIDO", s: "Ingenuo", a: "Astuto" }, { w: "DILIGENTE", s: "Cuidadoso", a: "Negligente" },
+                { w: "ERUDITO", s: "Sabio", a: "Ignorante" }, { w: "FORTUITO", s: "Casual", a: "Planeado" },
+                { w: "GÉLIDO", s: "Helado", a: "Ardiente" }, { w: "HOSTIL", s: "Enemigo", a: "Amigable" },
+                { w: "INNATO", s: "Natural", a: "Adquirido" }, { w: "JOVIAL", s: "Alegre", a: "Serio" }
+            ],
+            analogias: [
+                { a: "Pintor", b: "Pincel", r: "Sujeto-Instrumento", c: "Escultor", d: "Cincel", x: "Piedra" },
+                { a: "Hielo", b: "Frío", r: "Característica", c: "Fuego", d: "Calor", x: "Humo" },
+                { a: "Página", b: "Libro", r: "Parte-Todo", c: "Tecla", d: "Piano", x: "Música" },
+                { a: "Abeja", b: "Enjambre", r: "Elemento-Conjunto", c: "Perro", d: "Jauría", x: "Lobo" },
+                { a: "Infección", b: "Fiebre", r: "Causa-Efecto", c: "Golpe", d: "Hematoma", x: "Dolor" },
+                { a: "Paloma", b: "Paz", r: "Simbología", c: "Balanza", d: "Justicia", x: "Peso" },
+                { a: "Harina", b: "Pan", r: "Materia Prima", c: "Leche", d: "Queso", x: "Vaca" }
+            ],
+            excluido_acentuacion: {
+                agudas: ["Café", "Sofá", "Pared", "Reloj", "Compás", "Canción", "Perú", "Mamá"],
+                graves: ["Mesa", "Silla", "Árbol", "Césped", "Lápiz", "Azúcar", "Cama", "Libro"],
+                esdrujulas: ["Música", "Pájaro", "Célula", "Lámpara", "Teléfono", "Brújula", "Plátano"],
+                diacritica: [
+                    { w: "El", t: "Artículo" }, { w: "Él", t: "Pronombre" }, { w: "Tu", t: "Adjetivo" }, { w: "Tú", t: "Pronombre" },
+                    { w: "Mi", t: "Adjetivo" }, { w: "Mí", t: "Pronombre" }, { w: "Te", t: "Pronombre" }, { w: "Té", t: "Bebida" }
+                ]
+            }
+        };
+
+        // --- FUNCIONES GENERADORAS ---
+
+        function generateDataForTopic(id) {
+            let theoryHTML = "";
+            let examplesHTML = [];
+            let questions = [];
+
+            // 1. HOMONIMIA
+            if (id === 1) {
+                theoryHTML = `
+                    <div class="theory-card">
+                        <div class="theory-title">1. Homonimia <span class="etymology-tag">Griego: Homos (igual) + Onoma (nombre)</span></div>
+                        <p class="mb-4 text-gray-700 leading-relaxed">Imagina dos personas que se llaman "Juan Pérez". Son homónimos: tienen el mismo nombre pero son personas distintas. En el lenguaje pasa igual: palabras que "parecen" la misma, pero no lo son.</p>
+                        
+                        <div class="bg-blue-50 p-4 rounded-lg mb-4 border-l-4 border-blue-400">
+                            <h4 class="font-bold text-blue-800 text-lg flex items-center gap-2"><i class="fas fa-volume-up"></i> 1.1 Homófonos (Suenan igual)</h4>
+                            <p class="text-sm mb-2 text-gray-700"><strong>Truco para recordar:</strong> <em>Fono</em> significa sonido (como telé-fono). Si cierras los ojos y alguien dice la palabra, no puedes saber cuál es sin contexto.</p>
+                            <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                                <li><strong>H</strong> o sin <strong>H</strong>: Hola (saludo) vs Ola (mar).</li>
+                                <li><strong>B</strong> o <strong>V</strong>: Vota (elecciones) vs Bota (zapato).</li>
+                                <li><strong>C</strong>, <strong>S</strong> o <strong>Z</strong>: Casa (hogar) vs Caza (disparar).</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-green-50 p-4 rounded-lg mb-4 border-l-4 border-green-400">
+                            <h4 class="font-bold text-green-800 text-lg flex items-center gap-2"><i class="fas fa-pen-nib"></i> 1.2 Homógrafos (Escritura idéntica)</h4>
+                            <p class="text-sm mb-2 text-gray-700"><strong>Truco para recordar:</strong> <em>Graphos</em> significa escritura. Son gemelos idénticos en papel. No cambia ni una letra, ni una tilde.</p>
+                            <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                                <li><strong>Vino:</strong> Bebida de uva / Verbo venir.</li>
+                                <li><strong>Sal:</strong> Condimento / Verbo salir.</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-orange-50 p-4 rounded-lg mb-4 border-l-4 border-orange-400">
+                            <h4 class="font-bold text-orange-800 text-lg flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> 1.3 Paronomasia (La Trampa Auditiva)</h4>
+                            <p class="text-sm mb-2 text-gray-700">Son palabras que se escriben y suenan <strong>muy parecido</strong>, pero NO igual. Cambia una vocal o una letra y cambia todo el significado. Es muy común confundirlas si no pronuncias bien.</p>
+                            <div class="grid grid-cols-2 gap-2 text-sm mt-3">
+                                <div class="bg-white p-2 rounded shadow-sm border border-orange-100"><strong>Aptitud:</strong> Capacidad/Talento.<br><strong>Actitud:</strong> Comportamiento.</div>
+                                <div class="bg-white p-2 rounded shadow-sm border border-orange-100"><strong>Abeja:</strong> Insecto que pica.<br><strong>Oveja:</strong> Animal con lana.</div>
+                                <div class="bg-white p-2 rounded shadow-sm border border-orange-100"><strong>Afecto:</strong> Cariño.<br><strong>Efecto:</strong> Resultado.</div>
+                                <div class="bg-white p-2 rounded shadow-sm border border-orange-100"><strong>Prejuicio:</strong> Juzgar sin saber.<br><strong>Perjuicio:</strong> Daño físico/moral.</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-50 p-4 rounded-lg mb-4 border-l-4 border-purple-400">
+                            <h4 class="font-bold text-purple-800 text-lg flex items-center gap-2"><i class="fas fa-layer-group"></i> 1.4 Polisemia (Navaja Suiza)</h4>
+                            <p class="text-sm mb-2 text-gray-700"><strong>Truco:</strong> <em>Poli</em> = muchos. Es como una navaja suiza: una sola herramienta (palabra) que sirve para muchas cosas. Todo depende del contexto.</p>
+                            <p class="text-sm font-semibold mt-2 text-purple-900">Ejemplo Maestro: "CARTA"</p>
+                            <ul class="list-disc pl-5 text-sm text-gray-700 mb-2">
+                                <li>Escribí una <strong>carta</strong> a mi mamá. (Correo)</li>
+                                <li>Jugamos una partida de <strong>cartas</strong>. (Naipe)</li>
+                                <li>Pedimos la <strong>carta</strong> en el restaurante. (Menú)</li>
+                            </ul>
+                            <p class="text-sm font-semibold text-purple-900">Ejemplo Maestro: "PICO"</p>
+                            <ul class="list-disc pl-5 text-sm text-gray-700">
+                                <li>El <strong>pico</strong> del pájaro. (Boca)</li>
+                                <li>Usó el <strong>pico</strong> para cavar. (Herramienta)</li>
+                                <li>Subimos al <strong>pico</strong> de la montaña. (Cima)</li>
+                            </ul>
+                        </div>
+                    </div>`;
+
+                DataBank.homonimia.homofonos.forEach(i => examplesHTML.push(`<strong>HOMÓFONO:</strong> ${i[0]} (${i[1]}) vs ${i[2]} (${i[3]})`));
+                DataBank.homonimia.homografos.forEach(i => examplesHTML.push(`<strong>HOMÓGRAFO:</strong> ${i.w} (${i.d1} / ${i.d2})`));
+                DataBank.homonimia.paronimos.forEach(i => examplesHTML.push(`<strong>PARÓNIMO:</strong> ${i[0]} (${i[1]}) vs ${i[2]} (${i[3]})`));
+                examplesHTML.push(`<strong>POLISEMIA (Banco):</strong> Asiento / Dinero / Grupo de peces.`);
+                examplesHTML.push(`<strong>POLISEMIA (Copa):</strong> Trofeo / Vaso / Sombrero / Árbol.`);
+                examplesHTML.push(`<strong>POLISEMIA (Estrella):</strong> Cuerpo celeste / Artista famoso / Figura geométrica.`);
+
+                for(let i=0; i<30; i++) {
+                    const r = Math.random();
+                    if (r < 0.4) { 
+                        const item = DataBank.homonimia.homofonos[Math.floor(Math.random() * DataBank.homonimia.homofonos.length)];
+                        const isFirst = Math.random() > 0.5;
+                        questions.push({
+                            q: `Selecciona la palabra correcta para la definición: "${isFirst ? item[1].toUpperCase() : item[3].toUpperCase()}"`,
+                            correct: isFirst ? item[0] : item[2],
+                            wrong: isFirst ? item[2] : item[0]
+                        });
+                    } else if (r < 0.7) {
+                        const item = DataBank.homonimia.homografos[Math.floor(Math.random() * DataBank.homonimia.homografos.length)];
+                        const useDef1 = Math.random() > 0.5;
+                        questions.push({
+                            q: `En el contexto adecuado, la palabra "${item.w}" significa:`,
+                            correct: useDef1 ? item.d1 : item.d2,
+                            wrong: "Algo totalmente distinto"
+                        });
+                    } else {
+                        // Preguntas sobre Paronomasia/Polisemia
+                        const isPar = Math.random() > 0.5;
+                        if(isPar) {
+                            const item = DataBank.homonimia.paronimos[Math.floor(Math.random() * DataBank.homonimia.paronimos.length)];
+                            const isFirst = Math.random() > 0.5;
+                            questions.push({
+                                q: `Cuidado con la paronomasia: "${isFirst ? item[1] : item[3]}" se escribe:`,
+                                correct: isFirst ? item[0] : item[2],
+                                wrong: isFirst ? item[2] : item[0]
+                            });
+                        } else {
+                            questions.push({
+                                q: "¿Cuál de estas palabras es un ejemplo de POLISEMIA (tiene múltiples significados)?",
+                                correct: "Pico",
+                                wrong: "Ornitorrinco"
+                            });
+                        }
+                    }
+                }
+            }
+
+            // 2. CATEGORÍA GRAMATICAL
+            else if (id === 2) {
+                theoryHTML = `
+                    <div class="theory-card">
+                        <div class="theory-title">2. Categorías Gramaticales <span class="etymology-tag">El esqueleto del idioma</span></div>
+                        <p class="mb-4 text-gray-700">Imagina que el idioma es un edificio. Cada tipo de palabra es un material diferente: ladrillos, cemento, pintura, ventanas. Si no sabes qué es cada cosa, el edificio se cae.</p>
+
+                        <div class="mb-6">
+                            <h4 class="font-bold text-blue-800 text-lg border-b pb-2 mb-3">2.3 Palabras Variables (Los Camaleones)</h4>
+                            <p class="text-sm mb-3 text-gray-600">Cambian de forma. Se visten diferente según la ocasión (género, número, tiempo).</p>
+                            
+                            <div class="space-y-3">
+                                <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-indigo-500">
+                                    <strong class="text-indigo-700">Sustantivos (Nombres):</strong>
+                                    <p class="text-sm text-gray-700">Son las etiquetas que le ponemos al mundo. Personas, animales, cosas, ideas.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Ej: Juan, Gato, Mesa, Amor.</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-pink-500">
+                                    <strong class="text-pink-700">Adjetivos (La Pintura):</strong>
+                                    <p class="text-sm text-gray-700">Nos dicen CÓMO es el sustantivo. Dan color y detalle.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Ej: Rojo, Grande, Inteligente, Feo.</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-red-500">
+                                    <strong class="text-red-700">Verbos (El Motor):</strong>
+                                    <p class="text-sm text-gray-700">Son la acción pura. Sin verbo, no pasa nada en la oración.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Ej: Correr, Pensar, Ser, Estar.</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-teal-500">
+                                    <strong class="text-teal-700">Pronombres (Los Dobles):</strong>
+                                    <p class="text-sm text-gray-700">Reemplazan al nombre para no repetirlo. Son los actores de doble de riesgo.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Ej: "Juan come" -> "ÉL come".</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="font-bold text-blue-800 text-lg border-b pb-2 mb-3">2.4 Palabras Invariables (Las Rocas)</h4>
+                            <p class="text-sm mb-3 text-gray-600">No cambian nunca. No tienen plural ni femenino. Son sólidas.</p>
+                            
+                            <div class="space-y-3">
+                                <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-yellow-500">
+                                    <strong class="text-yellow-700">Adverbios (Modificadores):</strong>
+                                    <p class="text-sm text-gray-700">Dicen cuándo, dónde, cómo o cuánto. Modifican al verbo.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Ej: Ayer (tiempo), Aquí (lugar), Bien (modo).</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-gray-500">
+                                    <strong class="text-gray-700">Preposiciones (El Pegamento):</strong>
+                                    <p class="text-sm text-gray-700">Unen palabras. Si las quitas, la frase se desarma.</p>
+                                    <p class="text-xs text-gray-500 mt-1 italic">Lista vital: a, ante, bajo, con, contra, de, desde, en, entre, hacia, hasta, para, por, sin, sobre, tras...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                examplesHTML.push("<strong>Variable:</strong> Gato (singular) -> Gatos (plural).");
+                examplesHTML.push("<strong>Variable:</strong> Rojo (masculino) -> Roja (femenino).");
+                examplesHTML.push("<strong>Invariable:</strong> 'Mañana' (No existe 'mañanas' ni 'mañano').");
+                examplesHTML.push("<strong>Preposición:</strong> Café CON leche (une dos sustantivos).");
+
+                for(let i=0; i<30; i++) {
+                    const types = ["sustantivos", "verbos", "adjetivos", "preposiciones", "adverbios"];
+                    const typeKey = types[Math.floor(Math.random() * types.length)];
+                    const list = DataBank.gramatica[typeKey];
+                    const word = list[Math.floor(Math.random() * list.length)];
+                    let wrongType = types.find(t => t !== typeKey);
+                    
+                    questions.push({
+                        q: `¿A qué categoría gramatical pertenece la palabra "${word}"?`,
+                        correct: typeKey.slice(0,-1).toUpperCase(), 
+                        wrong: wrongType.slice(0,-1).toUpperCase()
+                    });
+                }
+            }
+
+            // 3. SINÓNIMOS Y ANTÓNIMOS
+            else if (id === 3) {
+                theoryHTML = `
+                    <div class="theory-card">
+                        <div class="theory-title">3. Relaciones Semánticas</div>
+                        <p class="mb-4 text-gray-700">Cómo se relacionan los significados de las palabras entre sí.</p>
+
+                        <div class="bg-green-50 p-4 rounded-lg mb-4 border-l-4 border-green-400">
+                            <h4 class="font-bold text-green-800 text-lg">3.1 Sinónimos (Los Hermanos)</h4>
+                            <p class="text-sm mb-2 text-gray-700">Palabras diferentes que significan lo mismo o algo muy parecido.</p>
+                            <ul class="list-disc pl-5 text-sm text-gray-700">
+                                <li><strong>Totales:</strong> Significan exactamente lo mismo (Esposo / Marido).</li>
+                                <li><strong>Parciales:</strong> Dependen del contexto (Pesado / Indigesto).</li>
+                            </ul>
+                            <div class="mt-2 bg-white p-2 rounded text-xs text-gray-500 border border-green-200">
+                                <strong>Regla de Oro:</strong> El sinónimo debe tener la MISMA categoría gramatical. Si te piden sinónimo de "Correr" (Verbo), la respuesta debe ser "Trotar" (Verbo), no "Carrera" (Sustantivo).
+                            </div>
+                        </div>
+
+                        <div class="bg-red-50 p-4 rounded-lg mb-4 border-l-4 border-red-400">
+                            <h4 class="font-bold text-red-800 text-lg">3.2 Antónimos (Los Enemigos)</h4>
+                            <p class="text-sm mb-2 text-gray-700">Palabras con significados opuestos o contrarios.</p>
+                            
+                            <p class="text-sm font-bold mt-2 text-red-900">Truco: Los Prefijos Negativos</p>
+                            <p class="text-sm text-gray-700">Muchas veces puedes crear un antónimo solo agregando un prefijo de negación:</p>
+                            <div class="grid grid-cols-3 gap-2 text-xs mt-2 text-center">
+                                <div class="bg-white p-1 rounded border"><strong>Des-</strong><br>Peinar/Despeinar</div>
+                                <div class="bg-white p-1 rounded border"><strong>In-</strong><br>Feliz/Infeliz</div>
+                                <div class="bg-white p-1 rounded border"><strong>Anti-</strong><br>Héroe/Antihéroe</div>
+                                <div class="bg-white p-1 rounded border"><strong>A-</strong><br>Normal/Anormal</div>
+                                <div class="bg-white p-1 rounded border"><strong>Dis-</strong><br>Gusto/Disgusto</div>
+                                <div class="bg-white p-1 rounded border"><strong>Contra-</strong><br>Decir/Contradecir</div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                DataBank.sin_ant.forEach(i => examplesHTML.push(`<strong>${i.w}:</strong> Sinónimo(${i.s}) / Antónimo(${i.a})`));
+                examplesHTML.push("<strong>Prefijo IN-:</strong> Moral -> Inmoral.");
+                examplesHTML.push("<strong>Prefijo DES-:</strong> Hacer -> Deshacer.");
+                examplesHTML.push("<strong>Contexto:</strong> 'Pesado' puede ser antónimo de 'Ligero' (peso) o de 'Divertido' (carácter).");
+
+                for(let i=0; i<30; i++) {
+                    const item = DataBank.sin_ant[Math.floor(Math.random() * DataBank.sin_ant.length)];
+                    const askSyn = Math.random() > 0.5;
+                    questions.push({
+                        q: `Selecciona el ${askSyn ? 'SINÓNIMO' : 'ANTÓNIMO'} de "${item.w}":`,
+                        correct: askSyn ? item.s : item.a,
+                        wrong: askSyn ? item.a : item.s
+                    });
+                }
+            }
+
+            // 4. ANALOGÍAS VERBALES
+            else if (id === 4) {
+                theoryHTML = `
+                    <div class="theory-card">
+                        <div class="theory-title">4. Analogías Verbales <span class="etymology-tag">Lógica Pura</span></div>
+                        <p class="mb-4 text-gray-700">Una analogía es una comparación de relaciones. Es como una ecuación matemática pero con palabras.</p>
+                        
+                        <div class="bg-gray-100 p-4 rounded-lg mb-4 text-center border border-gray-300">
+                            <p class="font-mono text-lg font-bold text-gray-800">A : B :: C : D</p>
+                            <p class="text-sm text-gray-600 mt-1">"A es a B como C es a D"</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="font-bold text-blue-800">4.1 Tipos de Relaciones (El Catálogo)</h4>
+                                <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1 mt-2">
+                                    <li><strong>Sinonimia/Antonimia:</strong> Blanco:Niveo :: Negro:Azabache.</li>
+                                    <li><strong>Causa-Efecto:</strong> Virus:Enfermedad :: Golpe:Dolor.</li>
+                                    <li><strong>Parte-Todo:</strong> Patal:Flor :: Dedo:Mano.</li>
+                                    <li><strong>Elemento-Conjunto:</strong> Isla:Archipiélago :: Cerdo:Piara.</li>
+                                    <li><strong>Especie-Género:</strong> Gato:Felino :: Manzana:Fruta.</li>
+                                    <li><strong>Materia-Producto:</strong> Leche:Queso :: Uva:Vino.</li>
+                                    <li><strong>Sujeto-Instrumento:</strong> Médico:Estetoscopio :: Pintor:Pincel.</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+                                <h4 class="font-bold text-yellow-800">4.2 La Regla de la Dirección</h4>
+                                <p class="text-sm text-gray-700 mt-1">¡Cuidado! El orden es sagrado. Si la pareja modelo va de <strong>Agente -> Lugar</strong> (Doctor:Hospital), la respuesta NO puede ir al revés (Escuela:Profesor).</p>
+                                <p class="text-xs text-gray-500 mt-1 font-bold">INCORRECTO: Doctor:Hospital :: Clase:Alumno.</p>
+                                <p class="text-xs text-gray-500 font-bold">CORRECTO: Doctor:Hospital :: Profesor:Escuela.</p>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                DataBank.analogias.forEach(a => examplesHTML.push(`<strong>${a.r}:</strong> ${a.a} es a ${a.b}`));
+
+                for(let i=0; i<30; i++) {
+                    const item = DataBank.analogias[Math.floor(Math.random() * DataBank.analogias.length)];
+                    questions.push({
+                        q: `Completa la analogía de tipo ${item.r}:<br><strong>${item.a}</strong> es a <strong>${item.b}</strong> como <strong>${item.c}</strong> es a...`,
+                        correct: item.d,
+                        wrong: item.x
+                    });
+                }
+            }
+
+            // 5. TÉRMINO EXCLUIDO
+            else if (id === 5) {
+                theoryHTML = `
+                    <div class="theory-card">
+                        <div class="theory-title">5. Término Excluido <span class="etymology-tag">El Intruso</span></div>
+                        <p class="mb-4 text-gray-700">Este ejercicio consiste en identificar la palabra que NO pertenece a un grupo (campo semántico). Es como el juego "uno de estos no es como los otros".</p>
+
+                        <h4 class="font-bold text-blue-800 text-lg border-b pb-2 mb-3">5.1 Criterios de Resolución</h4>
+                        <ul class="list-disc pl-5 text-sm text-gray-700 mb-6 space-y-1">
+                            <li><strong>Semántico:</strong> No comparte el significado básico (Ej: Manzana, Pera, Lechuga, Uva -> Lechuga es verdura).</li>
+                            <li><strong>Gramatical:</strong> Es de otra categoría (Ej: Correr, Saltar, Comedor, Dormir -> Comedor es sustantivo).</li>
+                        </ul>
+
+                        <div class="bg-indigo-50 p-4 rounded-lg mb-4 border-l-4 border-indigo-500">
+                            <h4 class="font-bold text-indigo-800 text-lg mb-2">5.2 Término Excluido por Acentuación</h4>
+                            <p class="text-sm text-gray-700 mb-3">A veces el intruso se esconde en la ortografía. Debes saber clasificar por el acento:</p>
+                            
+                            <div class="space-y-2 text-sm">
+                                <div class="flex items-start gap-2">
+                                    <span class="bg-indigo-200 text-indigo-800 px-2 rounded font-bold text-xs mt-0.5">A</span>
+                                    <div><strong>Agudas:</strong> Fuerza en la ÚLTIMA sílaba.<br><span class="text-xs text-gray-500">Se tildan si terminan en N, S o Vocal (Café, Sofá).</span></div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span class="bg-indigo-200 text-indigo-800 px-2 rounded font-bold text-xs mt-0.5">B</span>
+                                    <div><strong>Graves/Llanas:</strong> Fuerza en la PENÚLTIMA.<br><span class="text-xs text-gray-500">Se tildan si NO terminan en N, S o Vocal (Árbol, Lápiz).</span></div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span class="bg-indigo-200 text-indigo-800 px-2 rounded font-bold text-xs mt-0.5">C</span>
+                                    <div><strong>Esdrújulas:</strong> Fuerza en la ANTEPENÚLTIMA.<br><span class="text-xs text-gray-500">¡Siempre se tildan! (Música, Pájaro).</span></div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span class="bg-indigo-200 text-indigo-800 px-2 rounded font-bold text-xs mt-0.5">D</span>
+                                    <div><strong>Tilde Diacrítica:</strong> Sirve para diferenciar palabras iguales.<br><span class="text-xs text-gray-500">Tú (pronombre) vs Tu (posesivo) / Él (pronombre) vs El (artículo).</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                examplesHTML.push("<strong>Semántico:</strong> Silla, Mesa, Banco, Olla (Olla es de cocina, no mueble de asiento).");
+                examplesHTML.push("<strong>Agudas:</strong> Camión, Pared, Amor (Intruso: Árbol - Grave).");
+                examplesHTML.push("<strong>Diacrítica:</strong> Té (bebida) lleva tilde. Te (pronombre) no lleva.");
+
+                for(let i=0; i<30; i++) {
+                    const acc = DataBank.excluido_acentuacion;
+                    const r = Math.random();
+                    if (r < 0.25) {
+                         const intruder = acc.graves[Math.floor(Math.random()*acc.graves.length)];
+                         questions.push({ q: "En un grupo de palabras AGUDAS, ¿cuál es el término excluido (intruso)?", correct: intruder, wrong: acc.agudas[0] });
+                    } else if (r < 0.5) {
+                         const intruder = acc.agudas[Math.floor(Math.random()*acc.agudas.length)];
+                         questions.push({ q: "En un grupo de palabras GRAVES, ¿cuál es el término excluido (intruso)?", correct: intruder, wrong: acc.graves[0] });
+                    } else if (r < 0.75) {
+                         const item = acc.diacritica[Math.floor(Math.random() * acc.diacritica.length)];
+                         questions.push({ q: `¿Qué función gramatical tiene "${item.w}" (con/sin tilde según se muestra)?`, correct: item.t, wrong: "Contrario" });
+                    } else {
+                         questions.push({ q: "¿Cuál es la regla de oro de las Esdrújulas?", correct: "Siempre se tildan", wrong: "Solo si terminan en vocal" });
+                    }
+                }
+            }
+
+            // OTROS TEMAS
+            else {
+                theoryHTML = `<div class="theory-card"><div class="theory-title">${id}. Teoría del Tema</div><p>Contenido detallado para ${id}...</p></div>`;
+                for(let i=0; i<30; i++) questions.push({q: `Pregunta de prueba ${id}-${i}`, correct: "Correcta", wrong: "Incorrecta"});
+            }
+
+            return { theory: theoryHTML, examples: examplesHTML, questions: questions };
+        }
+
+
+        // --- UI LOGIC ---
+
+        const State = {
+            currentTopicId: null,
+            completedTopics: JSON.parse(localStorage.getItem('completedTopics')) || [],
+            quiz: { questions: [], index: 0, score: 0 }
+        };
+
+        function initApp() {
+            renderSidebar();
+        }
+
+        function renderSidebar() {
+            const nav = document.getElementById('syllabus-nav');
+            nav.innerHTML = '';
+            let masteredCount = 0;
+
+            SyllabusStructure.forEach((mod) => {
+                const modTitle = document.createElement('h3');
+                modTitle.className = "text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 px-2 border-b pb-1";
+                modTitle.innerText = mod.module;
+                nav.appendChild(modTitle);
+
+                mod.topics.forEach(topic => {
+                    const btn = document.createElement('button');
+                    const isCompleted = State.completedTopics.includes(topic.id);
+                    if(isCompleted) masteredCount++;
+                    
+                    btn.className = `w-full text-left px-4 py-3 rounded-xl mb-2 transition flex items-center justify-between group ${isCompleted ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-white text-gray-700 border border-gray-100 hover:border-blue-300 hover:shadow-md'}`;
+                    btn.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center ${isCompleted ? 'bg-green-200' : 'bg-gray-100 group-hover:bg-blue-100'} text-sm font-bold">
+                                ${isCompleted ? '<i class="fas fa-check"></i>' : topic.id}
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm leading-tight">${topic.title}</div>
+                                <div class="text-[10px] text-gray-400 leading-tight mt-0.5 truncate w-40">${topic.desc}</div>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-xs text-gray-300 group-hover:text-blue-400"></i>
+                    `;
+                    btn.onclick = () => triggerTopic(topic.id, topic.title);
+                    nav.appendChild(btn);
+                });
+            });
+            
+            // Actualizar barra superior
+            const totalTopics = 12; // Aprox
+            const pct = (masteredCount / totalTopics) * 100;
+            document.getElementById('global-progress-bar').style.width = `${pct}%`;
+        }
+
+        function triggerTopic(id, titleFallback) {
+            let title = titleFallback;
+            if (!title) {
+                SyllabusStructure.forEach(m => {
+                    const t = m.topics.find(t => t.id === id);
+                    if (t) title = t.title;
+                });
+            }
+
+            State.currentTopicId = id;
+            
+            document.getElementById('welcome-view').classList.add('hidden');
+            document.getElementById('topic-view').classList.remove('hidden');
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('overlay').classList.add('hidden');
+            window.scrollTo(0,0);
+
+            const data = generateDataForTopic(id);
+            
+            document.getElementById('topic-module-badge').innerText = SyllabusStructure.find(m => m.topics.some(t => t.id === id)).module.split(':')[0];
+            document.getElementById('topic-breadcrumb').innerText = title;
+            document.getElementById('topic-title').innerText = title;
+            document.getElementById('topic-theory').innerHTML = data.theory;
+            
+            const exContainer = document.getElementById('topic-examples');
+            exContainer.innerHTML = '';
+            if (data.examples.length > 0) {
+                data.examples.forEach(ex => {
+                    const div = document.createElement('div');
+                    div.className = "text-sm p-2 bg-gray-50 rounded border-l-2 border-blue-400 mb-1";
+                    div.innerHTML = ex;
+                    exContainer.appendChild(div);
+                });
+            } else {
+                exContainer.innerHTML = "<p class='text-gray-400 italic'>No hay ejemplos específicos.</p>";
+            }
+
+            startQuiz(data.questions);
+        }
+
+        function startQuiz(questions) {
+            State.quiz.questions = questions.sort(() => Math.random() - 0.5);
+            State.quiz.index = 0;
+            State.quiz.score = 0;
+            
+            document.getElementById('quiz-completed').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('quiz-progress-bar').style.width = '0%';
+            
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const q = State.quiz.questions[State.quiz.index];
+            const total = State.quiz.questions.length;
+            
+            document.getElementById('quiz-counter').innerText = `${State.quiz.index + 1} / ${total}`;
+            document.getElementById('quiz-progress-bar').style.width = `${((State.quiz.index) / total) * 100}%`;
+            document.getElementById('question-text').innerHTML = q.q;
+            
+            const optsDiv = document.getElementById('options-container');
+            optsDiv.innerHTML = '';
+
+            const options = [
+                { text: q.correct, type: 'correct' },
+                { text: q.wrong, type: 'wrong' }
+            ].sort(() => Math.random() - 0.5);
+
+            options.forEach(opt => {
+                const btn = document.createElement('div');
+                btn.className = "option-card bg-white p-5 rounded-xl border border-gray-200 flex items-center gap-4 group shadow-sm";
+                btn.innerHTML = `
+                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center group-hover:border-blue-400 transition flex-shrink-0">
+                        <div class="w-3 h-3 rounded-full bg-blue-500 opacity-0 transition indicator"></div>
+                    </div>
+                    <span class="text-lg font-medium text-gray-700 group-hover:text-gray-900">${opt.text}</span>
+                `;
+                btn.onclick = () => handleAnswer(opt.type, btn);
+                optsDiv.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(type, btn) {
+            if (btn.classList.contains('disabled')) return;
+
+            // Deshabilitar todos los botones para evitar doble click
+            document.querySelectorAll('.option-card').forEach(b => b.classList.add('disabled'));
+
+            if (type === 'correct') {
+                State.quiz.score++;
+                btn.classList.add('correct');
+                btn.innerHTML += '<i class="fas fa-check text-green-600 ml-auto"></i>';
+                showFeedback("¡Correcto!", true);
+            } else {
+                btn.classList.add('wrong');
+                btn.innerHTML += '<i class="fas fa-times text-red-600 ml-auto"></i>';
+                showFeedback("Incorrecto", false);
+            }
+
+            // AUTO-AVANCE: Esperar 1 segundo y pasar
+            setTimeout(() => {
+                State.quiz.index++;
+                if (State.quiz.index < State.quiz.questions.length) {
+                    renderQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1000);
+        }
+
+        function showFeedback(msg, isGood) {
+            const toast = document.getElementById('feedback-toast');
+            toast.innerText = msg;
+            toast.className = `absolute top-4 right-4 shadow-lg rounded-lg px-4 py-2 border font-bold text-sm animate-fade-in-up z-10 ${isGood ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`;
+            toast.classList.remove('hidden');
+        }
+
+        function showResults() {
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('quiz-completed').classList.remove('hidden');
+            document.getElementById('quiz-progress-bar').style.width = '100%';
+
+            const score = State.quiz.score;
+            const total = State.quiz.questions.length;
+            const isPerfect = score === 30;
+
+            document.getElementById('final-score').innerText = `${score}/${total}`;
+            const feedbackEl = document.getElementById('progress-feedback');
+            const actionsDiv = document.getElementById('result-actions');
+            const iconEl = document.getElementById('result-icon');
+
+            actionsDiv.innerHTML = '';
+
+            if (isPerfect) {
+                // ÉXITO TOTAL
+                feedbackEl.innerHTML = "¡PERFECTO! Has dominado este tema.";
+                feedbackEl.className = "mt-4 text-sm font-semibold text-center py-2 rounded-lg bg-green-100 text-green-700";
+                iconEl.innerHTML = '<i class="fas fa-crown text-yellow-500"></i>';
+                iconEl.className = "w-24 h-24 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl shadow-lg animate-bounce";
+
+                // Guardar como completado
+                if (!State.completedTopics.includes(State.currentTopicId)) {
+                    State.completedTopics.push(State.currentTopicId);
+                    localStorage.setItem('completedTopics', JSON.stringify(State.completedTopics));
+                    renderSidebar();
+                }
+
+                // Botón Avanzar (Lógica simple: ID + 1)
+                const nextId = State.currentTopicId + 1;
+                // Verificar si existe el siguiente tema en la estructura
+                const hasNext = SyllabusStructure.some(m => m.topics.some(t => t.id === nextId));
+
+                if (hasNext) {
+                    const btn = document.createElement('button');
+                    btn.className = "bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition shadow-lg w-full flex items-center justify-center gap-2";
+                    btn.innerHTML = `Avanzar al Tema ${nextId} <i class="fas fa-arrow-right"></i>`;
+                    btn.onclick = () => triggerTopic(nextId);
+                    actionsDiv.appendChild(btn);
+                } else {
+                    actionsDiv.innerHTML = "<div class='text-gray-500'>¡Has completado todo el temario!</div>";
+                }
+
+            } else {
+                // FALLÓ
+                feedbackEl.innerHTML = `Necesitas 30/30 para avanzar.<br>Te faltaron ${30 - score} aciertos.`;
+                feedbackEl.className = "mt-4 text-sm font-semibold text-center py-2 rounded-lg bg-red-100 text-red-700";
+                iconEl.innerHTML = '<i class="fas fa-times text-red-400"></i>';
+                
+                const btn = document.createElement('button');
+                btn.className = "bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg w-full flex items-center justify-center gap-2";
+                btn.innerHTML = `<i class="fas fa-sync-alt"></i> Intentar otra vez`;
+                btn.onclick = () => startQuiz(generateDataForTopic(State.currentTopicId).questions);
+                actionsDiv.appendChild(btn);
+            }
+        }
+
+        // --- MENÚ MÓVIL ---
+        document.getElementById('menu-btn').onclick = () => {
+            document.getElementById('sidebar').classList.remove('-translate-x-full');
+            document.getElementById('overlay').classList.remove('hidden');
+        };
+        document.getElementById('overlay').onclick = () => {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('overlay').classList.add('hidden');
+        };
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
